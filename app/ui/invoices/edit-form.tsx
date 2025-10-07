@@ -1,5 +1,17 @@
 'use client';
 
+// import { CustomerField, InvoiceForm } from '@/app/lib/definitions';
+// import {
+//   CheckIcon,
+//   ClockIcon,
+//   CurrencyDollarIcon,
+//   UserCircleIcon,
+// } from '@heroicons/react/24/outline';
+// import Link from 'next/link';
+// import { Button } from '@/app/ui/button';
+// import { updateInvoice, State } from '@/app/lib/actions';
+// import { useActionState } from 'react';
+
 import { CustomerField, InvoiceForm } from '@/app/lib/definitions';
 import {
   CheckIcon,
@@ -9,7 +21,19 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { Button } from '@/app/ui/button';
-import { updateInvoice } from '@/app/lib/actions';
+import { updateInvoice, State } from '@/app/lib/actions';
+import { useActionState } from 'react';
+
+const FieldError = ({ id, errors }: { id: string; errors: any }) => {
+    // Si hay errores para el ID del campo, mapeamos y mostramos cada uno.
+    return errors?.[id] ? (
+        <div id={`${id}-error`} aria-live="polite" className="mt-2 text-sm text-red-500">
+            {errors[id].map((error: string) => (
+                <p key={error}>{error}</p>
+            ))}
+        </div>
+    ) : null;
+};
 
 export default function EditInvoiceForm({
   invoice,
@@ -18,16 +42,20 @@ export default function EditInvoiceForm({
   invoice: InvoiceForm;
   customers: CustomerField[];
 }) {
-  // 1. Usamos .bind para pasar el ID de la factura a la Server Action.
+  const initialState: State = { message: null, errors: {} };
+  
+  // Vinculamos el ID de la factura a la Server Action
   const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
+  
+  // Usamos useActionState para manejar el estado del formulario y los errores
+  const [state, formAction] = useActionState(updateInvoiceWithId, initialState);
 
-  // 2. Todo el JSX del formulario debe estar dentro de esta única sentencia return.
   return (
     // Vinculamos la Server Action a la propiedad 'action' del formulario.
-    <form action={updateInvoiceWithId}>
-      {/* Hidden field for invoice ID (Optional, but useful for clarity) */}
+    <form action={formAction}>
+      {/* El ID de la factura se pasa mediante .bind(), pero lo dejamos aquí por si acaso */}
       <input type="hidden" name="id" value={invoice.id} />
-      
+
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
         {/* Customer Name */}
         <div className="mb-4">
@@ -40,6 +68,8 @@ export default function EditInvoiceForm({
               name="customerId"
               className="peer block w-full cursor-pointer rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
               defaultValue={invoice.customer_id}
+              // Enlaza el error con el campo
+              aria-describedby="customer-error" 
             >
               <option value="" disabled>
                 Select a customer
@@ -52,6 +82,10 @@ export default function EditInvoiceForm({
             </select>
             <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
           </div>
+          
+          {/* Muestra el error de validación para customerId */}
+          <FieldError id="customerId" errors={state.errors} />
+
         </div>
 
         {/* Invoice Amount */}
@@ -69,19 +103,25 @@ export default function EditInvoiceForm({
                 defaultValue={invoice.amount}
                 placeholder="Enter USD amount"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
+                aria-describedby="amount-error"
               />
               <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
+          
+          {/* Muestra el error de validación para amount */}
+          <FieldError id="amount" errors={state.errors} />
+
         </div>
 
         {/* Invoice Status */}
-        <fieldset>
+        <fieldset aria-describedby="status-error">
           <legend className="mb-2 block text-sm font-medium">
             Set the invoice status
           </legend>
           <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
             <div className="flex gap-4">
+              {/* ... radio buttons ... */}
               <div className="flex items-center">
                 <input
                   id="pending"
@@ -116,7 +156,19 @@ export default function EditInvoiceForm({
               </div>
             </div>
           </div>
+          
+          {/* Muestra el error de validación para status (todo el fieldset) */}
+          <FieldError id="status" errors={state.errors} />
+          
         </fieldset>
+        
+        {/* Muestra el error general del formulario */}
+        {state.message && (
+          <div className="mt-4 text-sm text-red-500" aria-live="polite">
+            <p>{state.message}</p>
+          </div>
+        )}
+        
       </div>
       <div className="mt-6 flex justify-end gap-4">
         <Link
